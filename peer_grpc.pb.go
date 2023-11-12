@@ -4,7 +4,7 @@
 // - protoc             v4.25.0
 // source: proto/peer.proto
 
-package proto
+package main
 
 import (
 	context "context"
@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	MutualService_Join_FullMethodName      = "/MutualService/Join"
-	MutualService_Leave_FullMethodName     = "/MutualService/Leave"
-	MutualService_Send_FullMethodName      = "/MutualService/Send"
-	MutualService_Broadcast_FullMethodName = "/MutualService/Broadcast"
+	MutualService_Join_FullMethodName      = "/proto.MutualService/Join"
+	MutualService_Leave_FullMethodName     = "/proto.MutualService/Leave"
+	MutualService_Send_FullMethodName      = "/proto.MutualService/Send"
+	MutualService_Broadcast_FullMethodName = "/proto.MutualService/Broadcast"
 )
 
 // MutualServiceClient is the client API for MutualService service.
@@ -221,7 +221,7 @@ func (x *mutualServiceBroadcastServer) Send(m *Message) error {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MutualService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "MutualService",
+	ServiceName: "proto.MutualService",
 	HandlerType: (*MutualServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

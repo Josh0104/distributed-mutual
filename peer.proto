@@ -2,6 +2,8 @@ syntax = "proto3";
 
 option go_package = "github.com/Josh0104/distributed-mutual/proto";
 
+package proto;
+
 service MutualService {
     rpc Join(JoinRequest) returns (JoinResponse);
 	rpc Leave(LeaveRequest) returns (LeaveResponse);
