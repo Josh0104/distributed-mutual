@@ -12,6 +12,7 @@ service MutualService {
 	rpc StreamFromClient (stream Message) returns (Message);
 	rpc StreamFromClientToServer (stream Message) returns (stream Message);
 	rpc Broadcast (BroadcastSubscription) returns (stream Message);
+	
 }
 
 message JoinRequest {
@@ -42,4 +43,8 @@ message Message {
 message BroadcastSubscription {
 	string senderId = 1;
 	string content = 2;
+}
+
+message Token {
+	int32 token = 1;
 }
