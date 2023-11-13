@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"sync"
 	// "io"
@@ -13,7 +14,7 @@ var (
 
 func StreamFromClient(client MutualServiceClient, message string) {
 	// Create a stream by calling the streaming RPC method
-	log.Printf(message)
+	// log.Printf(message)
 	stream, err := client.StreamFromClient(context.Background())
 	if err != nil {
 		log.Fatalf("could not get stream: %v", err)
@@ -47,21 +48,21 @@ func StreamFromClient(client MutualServiceClient, message string) {
 // 	return nil
 // }
 
-// func (s *MutualService) StreamFromClient(msgStream MutualService_StreamFromClientServer) error {
-// 	for {
-// 		// get the next message from the stream
-// 		msg, err := msgStream.Recv()
+func (s *MutualService) StreamFromClient(msgStream MutualService_StreamFromClientServer) error {
+	for {
+		// get the next message from the stream
+		msg, err := msgStream.Recv()
 
-// 		// the stream is closed so we can exit the loop
-// 		if err == io.EOF {
-// 			break
-// 		}
-// 		// some other error
-// 		if err != nil {
-// 			return err
-// 		}
-// 		// log the message
-// 		log.Printf("Received message from %s: %s", msg.SenderId, msg.Content)
-// 	}
-// 	return nil
-// }
+		// the stream is closed so we can exit the loop
+		if err == io.EOF {
+			break
+		}
+		// some other error
+		if err != nil {
+			return err
+		}
+		// log the message
+		log.Printf("Received message from %s: %s", msg.SenderId, msg.Content)
+	}
+	return nil
+}

@@ -26,6 +26,7 @@ const (
 	MutualService_StreamFromClient_FullMethodName         = "/main.MutualService/StreamFromClient"
 	MutualService_StreamFromClientToServer_FullMethodName = "/main.MutualService/StreamFromClientToServer"
 	MutualService_Broadcast_FullMethodName                = "/main.MutualService/Broadcast"
+	MutualService_GetToken_FullMethodName                 = "/main.MutualService/GetToken"
 )
 
 // MutualServiceClient is the client API for MutualService service.
@@ -39,6 +40,7 @@ type MutualServiceClient interface {
 	StreamFromClient(ctx context.Context, opts ...grpc.CallOption) (MutualService_StreamFromClientClient, error)
 	StreamFromClientToServer(ctx context.Context, opts ...grpc.CallOption) (MutualService_StreamFromClientToServerClient, error)
 	Broadcast(ctx context.Context, in *BroadcastSubscription, opts ...grpc.CallOption) (MutualService_BroadcastClient, error)
+	GetToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Token, error)
 }
 
 type mutualServiceClient struct {
@@ -205,6 +207,15 @@ func (x *mutualServiceBroadcastClient) Recv() (*Message, error) {
 	return m, nil
 }
 
+func (c *mutualServiceClient) GetToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Token, error) {
+	out := new(Token)
+	err := c.cc.Invoke(ctx, MutualService_GetToken_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MutualServiceServer is the server API for MutualService service.
 // All implementations must embed UnimplementedMutualServiceServer
 // for forward compatibility
@@ -216,6 +227,7 @@ type MutualServiceServer interface {
 	StreamFromClient(MutualService_StreamFromClientServer) error
 	StreamFromClientToServer(MutualService_StreamFromClientToServerServer) error
 	Broadcast(*BroadcastSubscription, MutualService_BroadcastServer) error
+	GetToken(context.Context, *Token) (*Token, error)
 	mustEmbedUnimplementedMutualServiceServer()
 }
 
@@ -243,6 +255,9 @@ func (UnimplementedMutualServiceServer) StreamFromClientToServer(MutualService_S
 }
 func (UnimplementedMutualServiceServer) Broadcast(*BroadcastSubscription, MutualService_BroadcastServer) error {
 	return status.Errorf(codes.Unimplemented, "method Broadcast not implemented")
+}
+func (UnimplementedMutualServiceServer) GetToken(context.Context, *Token) (*Token, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetToken not implemented")
 }
 func (UnimplementedMutualServiceServer) mustEmbedUnimplementedMutualServiceServer() {}
 
@@ -405,6 +420,24 @@ func (x *mutualServiceBroadcastServer) Send(m *Message) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _MutualService_GetToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Token)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MutualServiceServer).GetToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MutualService_GetToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MutualServiceServer).GetToken(ctx, req.(*Token))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MutualService_ServiceDesc is the grpc.ServiceDesc for MutualService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -423,6 +456,10 @@ var MutualService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Send",
 			Handler:    _MutualService_Send_Handler,
+		},
+		{
+			MethodName: "GetToken",
+			Handler:    _MutualService_GetToken_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

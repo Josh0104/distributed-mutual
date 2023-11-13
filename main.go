@@ -4,7 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
+
+	// "io"
 	"log"
 	"net"
 	"sync"
@@ -16,16 +17,14 @@ import (
 
 type MutualService struct {
 	UnimplementedMutualServiceServer
-	name string // Not required but useful if you want to name your server
-	port string // Not required but useful if your server needs to know what port it's listening to
-	clientMu sync.Mutex
-
+	name                string // Not required but useful if you want to name your server
+	port                string // Not required but useful if your server needs to know what port it's listening to
+	isInCriticalSection bool
+	clientMu            sync.Mutex
+	isWaiting           bool
+	nextPeer            string
+	prevPeer            string
 }
-
-type _BroadcastSubscription struct {
-	stream MutualService_BroadcastServer
-}
-
 
 var (
 	port_numbers       = [3]string{":5001", ":5002", ":5003"}
@@ -35,14 +34,12 @@ var (
 	addr               string
 	wgServer           sync.WaitGroup
 	wgClients          sync.WaitGroup
-	globalCancel       context.CancelFunc // Declare at a higher scope
+	globalCancel       context.CancelFunc  // Declare at a higher scope
 	mutual_client      MutualServiceClient //the server
 	mutual_server      MutualServiceServer //the client
-)
+	otherClientsServerMutex sync.Mutex
 
-type Config struct {
-	ClientMaps map[string]_BroadcastSubscription
-}
+)
 
 func main() {
 	flag.Parse()
@@ -87,17 +84,22 @@ func startServer() {
 		return
 	}
 	serverRegistrar := grpc.NewServer()
-	service := &MutualService{
-		name: "client" + addr,
-		port: addr,
+	mutual_server := &MutualService{
+		name:                "client" + addr,
+		port:                addr,
+		isInCriticalSection: true,
+		isWaiting:           true,
 	}
 
-	RegisterMutualServiceServer(serverRegistrar, service)
+	RegisterMutualServiceServer(serverRegistrar, mutual_server)
 	err = serverRegistrar.Serve(lis)
 	if err != nil {
 		log.Fatalf("impossible to serve: %s", err)
 		return
 	}
+
+	setToken(mutual_server, false, false)
+
 	log.Printf("Successful, starting server on %s", addr)
 }
 
@@ -131,7 +133,7 @@ func promptForInput() {
 			connected = true
 		} else if input == "Enter critical section" {
 			// active = false
-			enterCriticalSection(addr)
+			enterWaitingState()
 		} else if input == "Exit" {
 			exit()
 			active = false
@@ -152,11 +154,13 @@ func promptForInput() {
 					if err != nil {
 						log.Fatalf("could not get input: %v", err)
 					}
-	
+
 					// sendMessageToClients(otherClientsServer[0], input)
-					// sendMessageToClients(otherClientsServer[1], input)	
+					// sendMessageToClients(otherClientsServer[1], input)
 					send(otherClientsServer[0], input)
-					send(otherClientsServer[1], input)		
+					send(otherClientsServer[1], input)
+					// Example usage to check isInCriticalSection for the first client
+
 				}
 			}
 		} else {
@@ -166,12 +170,52 @@ func promptForInput() {
 	}
 }
 
+func enterWaitingState() {
+    log.Printf("Client %s entering waiting state", addr)
+    active := true
+	waitIndex := 0;
+    for active {
+        otherClientsServerMutex.Lock()
+        token1, err := otherClientsServer[0].GetToken(context.Background(), &Token{})
+        token2, err := otherClientsServer[1].GetToken(context.Background(), &Token{})
+        otherClientsServerMutex.Unlock()
+
+        if err != nil {
+            // handle error
+        }
+		log.Printf("Token 1: %v", token1.IsCritical)
+
+        if token1.IsCritical || token2.IsCritical {
+            active = false
+            // Initialize the Token with IsWaiting and IsCritical set to true
+			// setToken(, true, true)
+
+            otherClientsServerMutex.Lock()
+
+            enterCriticalSection(addr)
+        } else if waitIndex == 5{
+			log.Println("Client is waiting for too long, exiting waiting state")
+			active = false
+		}else {
+			waitIndex = waitIndex + 1
+			log.Printf("Client %s is waiting", addr)
+            time.Sleep(5 * time.Second)
+        }
+    }
+}
+
+
+
 func enterCriticalSection(name string) {
 	defer leaveCriticalSection(name)
 	log.Printf("Client %s entering critical section", addr)
-	var message = "Client "+addr+" entering critical section"
+
+	var message = "Client " + addr + " entering critical section"
 	StreamFromClient(otherClientsServer[0], message)
 	StreamFromClient(otherClientsServer[1], message)
+	getTokenInfo(otherClientsServer[0])
+	getTokenInfo(otherClientsServer[1])
+	time.Sleep(5 * time.Second)
 }
 
 func leaveCriticalSection(name string) {
@@ -209,12 +253,21 @@ func connectToOtherClients() {
 			res, err := clients_server.Join(ctx, &JoinRequest{
 				NodeName: addr,
 			})
-			if err != nil {
+
+			res2, err2 := clients_server.GetToken(ctx, &Token{
+				TokenName:  addr + "token",
+				IsWaiting:  false,
+				IsCritical: false,
+			})
+
+			if err != nil || err2 != nil {
 				log.Printf("Fail to Join: %v", err)
 				return
 			}
 
 			log.Printf("Join response: %v", res)
+
+			log.Printf("Token response: %v", res2)
 
 			log.Println("the connection is: ", conn.GetState().String())
 
@@ -261,16 +314,6 @@ func sayHiToClient(server MutualServiceClient, port string) {
 	}
 	// send some messages to the server
 	stream.Send(&Message{Content: "I am now connected to you", SenderId: port})
-	// stream.Send(&Message{Content: addr, SenderId: "How are you?"})
-	// stream.Send(&Message{Content: addr, SenderId: "I'm fine, thanks."})
-
-	// close the stream
-	// farewell, err := stream.CloseAndRecv()
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return
-	// }
-	// log.Println("server says: ", farewell)
 }
 
 func sendMessageToClients(server MutualServiceClient, input string) {
@@ -285,29 +328,42 @@ func sendMessageToClients(server MutualServiceClient, input string) {
 
 }
 
-//Server receives message from client
-
-
-func (s *MutualService) SendMessageHello(stream MutualService_StreamFromServerServer) error {
-	for {
-		// get the next message from the stream
-		err := stream.Send(&Message{Content: "Hello from client", SenderId: "client"})
-
-		// the stream is closed so we can exit the loop
-		if err == io.EOF {
-			break
-		}
-		// some other error
-		if err != nil {
-			return err
-		}
-		// log the message
-		// log.Printf("Received message from %s: %s", msg.SenderId, msg.Content)
-	}
-	return nil
-}
-
+// Server receives message from client
 func send(client MutualServiceClient, input string) {
 	// Create a stream by calling the streaming RPC method
 	StreamFromClient(client, input)
+}
+
+func getTokenInfo(client MutualServiceClient) {
+	// Call the GetServerInfo RPC
+	res, err := client.GetToken(context.Background(), &Token{})
+	if err != nil {
+		log.Printf("Failed to get server info: %v", err)
+		return
+	}
+
+	// Access the information
+	tokenName := res.GetTokenName()
+	criticalStatus := res.GetIsCritical()
+
+	log.Printf("Server Info: Name: %s, criticalStatus: %v", tokenName, criticalStatus)
+}
+
+func (s *MutualService) GetToken(ctx context.Context, req *Token) (*Token, error) {
+	// Return information about the server
+	return &Token{
+		TokenName:  "111",
+		IsWaiting:  false,
+		IsCritical: false,
+	}, nil
+}
+
+func setToken(s *MutualService, isWaiting bool, isCritical bool) {
+	
+	s.GetToken(context.Background(), &Token{
+		TokenName:  "111",
+		IsWaiting:  isWaiting,
+		IsCritical: isCritical,
+	})
+
 }
