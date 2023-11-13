@@ -38,6 +38,7 @@ var (
 	mutual_client      MutualServiceClient //the server
 	mutual_server      MutualServiceServer //the client
 	otherClientsServerMutex sync.Mutex
+	serverRegistrar   *grpc.Server
 
 )
 
@@ -83,12 +84,12 @@ func startServer() {
 		log.Fatalf("cannot create listener: %s", err)
 		return
 	}
-	serverRegistrar := grpc.NewServer()
+	serverRegistrar = grpc.NewServer()
 	mutual_server := &MutualService{
 		name:                "client" + addr,
 		port:                addr,
-		isInCriticalSection: true,
-		isWaiting:           true,
+		isInCriticalSection: false,
+		isWaiting:           false,
 	}
 
 	RegisterMutualServiceServer(serverRegistrar, mutual_server)
@@ -183,9 +184,8 @@ func enterWaitingState() {
         if err != nil {
             // handle error
         }
-		log.Printf("Token 1: %v", token1.IsCritical)
 
-        if token1.IsCritical || token2.IsCritical {
+        if !token1.IsCritical || !token2.IsCritical {
             active = false
             // Initialize the Token with IsWaiting and IsCritical set to true
 			// setToken(, true, true)
@@ -209,7 +209,7 @@ func enterWaitingState() {
 func enterCriticalSection(name string) {
 	defer leaveCriticalSection(name)
 	log.Printf("Client %s entering critical section", addr)
-
+	// setToken(mutual_server, false, false)
 	var message = "Client " + addr + " entering critical section"
 	StreamFromClient(otherClientsServer[0], message)
 	StreamFromClient(otherClientsServer[1], message)
@@ -219,7 +219,10 @@ func enterCriticalSection(name string) {
 }
 
 func leaveCriticalSection(name string) {
+	msg := "Client " + name + " leaving critical section"
 	log.Printf("Client %s leaving critical section", name)
+	StreamFromClient(otherClientsServer[0], msg)
+	StreamFromClient(otherClientsServer[1], msg)
 }
 
 func connectToOtherClients() {
@@ -248,7 +251,7 @@ func connectToOtherClients() {
 			// StreamFromClient(clients_server, port)
 
 			otherClientsServer = append(otherClientsServer, clients_server)
-			// sayHiToClient(clients_server, port)
+			sayHiToClient(clients_server, port)
 
 			res, err := clients_server.Join(ctx, &JoinRequest{
 				NodeName: addr,
@@ -365,5 +368,16 @@ func setToken(s *MutualService, isWaiting bool, isCritical bool) {
 		IsWaiting:  isWaiting,
 		IsCritical: isCritical,
 	})
+}
 
+func setTokenNewValue(isWaiting bool, isCritical bool) {
+	serverRegistrar := grpc.NewServer()
+	mutual_server := &MutualService{
+		name:                "client" + addr,
+		port:                addr,
+		isInCriticalSection: isCritical,
+		isWaiting:           isWaiting,
+	}
+
+	RegisterMutualServiceServer(serverRegistrar, mutual_server)
 }
