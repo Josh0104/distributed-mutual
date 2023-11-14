@@ -9,7 +9,6 @@ service MutualService {
 	rpc StreamFromClient (stream Message) returns (Message);
 	rpc Broadcast (BroadcastSubscription) returns (stream Message);
 	rpc GetToken (Token) returns (Token);
-
 }
 
 message JoinRequest {
@@ -18,10 +17,6 @@ message JoinRequest {
 
 message JoinResponse {
 	string nodeId = 1;
-}
-
-message PublishResponse {
-	string message = 1;
 }
 
 message Message {
