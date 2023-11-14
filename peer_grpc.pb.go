@@ -19,14 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	MutualService_Join_FullMethodName                     = "/main.MutualService/Join"
-	MutualService_Leave_FullMethodName                    = "/main.MutualService/Leave"
-	MutualService_Send_FullMethodName                     = "/main.MutualService/Send"
-	MutualService_StreamFromServer_FullMethodName         = "/main.MutualService/StreamFromServer"
-	MutualService_StreamFromClient_FullMethodName         = "/main.MutualService/StreamFromClient"
-	MutualService_StreamFromClientToServer_FullMethodName = "/main.MutualService/StreamFromClientToServer"
-	MutualService_Broadcast_FullMethodName                = "/main.MutualService/Broadcast"
-	MutualService_GetToken_FullMethodName                 = "/main.MutualService/GetToken"
+	MutualService_Join_FullMethodName             = "/main.MutualService/Join"
+	MutualService_StreamFromClient_FullMethodName = "/main.MutualService/StreamFromClient"
+	MutualService_Broadcast_FullMethodName        = "/main.MutualService/Broadcast"
+	MutualService_GetToken_FullMethodName         = "/main.MutualService/GetToken"
 )
 
 // MutualServiceClient is the client API for MutualService service.
@@ -34,11 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MutualServiceClient interface {
 	Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error)
-	Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error)
-	Send(ctx context.Context, in *Message, opts ...grpc.CallOption) (*PublishResponse, error)
-	StreamFromServer(ctx context.Context, in *Message, opts ...grpc.CallOption) (MutualService_StreamFromServerClient, error)
 	StreamFromClient(ctx context.Context, opts ...grpc.CallOption) (MutualService_StreamFromClientClient, error)
-	StreamFromClientToServer(ctx context.Context, opts ...grpc.CallOption) (MutualService_StreamFromClientToServerClient, error)
 	Broadcast(ctx context.Context, in *BroadcastSubscription, opts ...grpc.CallOption) (MutualService_BroadcastClient, error)
 	GetToken(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Token, error)
 }
@@ -60,58 +52,8 @@ func (c *mutualServiceClient) Join(ctx context.Context, in *JoinRequest, opts ..
 	return out, nil
 }
 
-func (c *mutualServiceClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
-	out := new(LeaveResponse)
-	err := c.cc.Invoke(ctx, MutualService_Leave_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *mutualServiceClient) Send(ctx context.Context, in *Message, opts ...grpc.CallOption) (*PublishResponse, error) {
-	out := new(PublishResponse)
-	err := c.cc.Invoke(ctx, MutualService_Send_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *mutualServiceClient) StreamFromServer(ctx context.Context, in *Message, opts ...grpc.CallOption) (MutualService_StreamFromServerClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MutualService_ServiceDesc.Streams[0], MutualService_StreamFromServer_FullMethodName, opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &mutualServiceStreamFromServerClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type MutualService_StreamFromServerClient interface {
-	Recv() (*Message, error)
-	grpc.ClientStream
-}
-
-type mutualServiceStreamFromServerClient struct {
-	grpc.ClientStream
-}
-
-func (x *mutualServiceStreamFromServerClient) Recv() (*Message, error) {
-	m := new(Message)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *mutualServiceClient) StreamFromClient(ctx context.Context, opts ...grpc.CallOption) (MutualService_StreamFromClientClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MutualService_ServiceDesc.Streams[1], MutualService_StreamFromClient_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &MutualService_ServiceDesc.Streams[0], MutualService_StreamFromClient_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -144,39 +86,8 @@ func (x *mutualServiceStreamFromClientClient) CloseAndRecv() (*Message, error) {
 	return m, nil
 }
 
-func (c *mutualServiceClient) StreamFromClientToServer(ctx context.Context, opts ...grpc.CallOption) (MutualService_StreamFromClientToServerClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MutualService_ServiceDesc.Streams[2], MutualService_StreamFromClientToServer_FullMethodName, opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &mutualServiceStreamFromClientToServerClient{stream}
-	return x, nil
-}
-
-type MutualService_StreamFromClientToServerClient interface {
-	Send(*Message) error
-	Recv() (*Message, error)
-	grpc.ClientStream
-}
-
-type mutualServiceStreamFromClientToServerClient struct {
-	grpc.ClientStream
-}
-
-func (x *mutualServiceStreamFromClientToServerClient) Send(m *Message) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *mutualServiceStreamFromClientToServerClient) Recv() (*Message, error) {
-	m := new(Message)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *mutualServiceClient) Broadcast(ctx context.Context, in *BroadcastSubscription, opts ...grpc.CallOption) (MutualService_BroadcastClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MutualService_ServiceDesc.Streams[3], MutualService_Broadcast_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &MutualService_ServiceDesc.Streams[1], MutualService_Broadcast_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -221,11 +132,7 @@ func (c *mutualServiceClient) GetToken(ctx context.Context, in *Token, opts ...g
 // for forward compatibility
 type MutualServiceServer interface {
 	Join(context.Context, *JoinRequest) (*JoinResponse, error)
-	Leave(context.Context, *LeaveRequest) (*LeaveResponse, error)
-	Send(context.Context, *Message) (*PublishResponse, error)
-	StreamFromServer(*Message, MutualService_StreamFromServerServer) error
 	StreamFromClient(MutualService_StreamFromClientServer) error
-	StreamFromClientToServer(MutualService_StreamFromClientToServerServer) error
 	Broadcast(*BroadcastSubscription, MutualService_BroadcastServer) error
 	GetToken(context.Context, *Token) (*Token, error)
 	mustEmbedUnimplementedMutualServiceServer()
@@ -238,20 +145,8 @@ type UnimplementedMutualServiceServer struct {
 func (UnimplementedMutualServiceServer) Join(context.Context, *JoinRequest) (*JoinResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
 }
-func (UnimplementedMutualServiceServer) Leave(context.Context, *LeaveRequest) (*LeaveResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Leave not implemented")
-}
-func (UnimplementedMutualServiceServer) Send(context.Context, *Message) (*PublishResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
-}
-func (UnimplementedMutualServiceServer) StreamFromServer(*Message, MutualService_StreamFromServerServer) error {
-	return status.Errorf(codes.Unimplemented, "method StreamFromServer not implemented")
-}
 func (UnimplementedMutualServiceServer) StreamFromClient(MutualService_StreamFromClientServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamFromClient not implemented")
-}
-func (UnimplementedMutualServiceServer) StreamFromClientToServer(MutualService_StreamFromClientToServerServer) error {
-	return status.Errorf(codes.Unimplemented, "method StreamFromClientToServer not implemented")
 }
 func (UnimplementedMutualServiceServer) Broadcast(*BroadcastSubscription, MutualService_BroadcastServer) error {
 	return status.Errorf(codes.Unimplemented, "method Broadcast not implemented")
@@ -290,63 +185,6 @@ func _MutualService_Join_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MutualService_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LeaveRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MutualServiceServer).Leave(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MutualService_Leave_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MutualServiceServer).Leave(ctx, req.(*LeaveRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MutualService_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Message)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MutualServiceServer).Send(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MutualService_Send_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MutualServiceServer).Send(ctx, req.(*Message))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MutualService_StreamFromServer_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Message)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(MutualServiceServer).StreamFromServer(m, &mutualServiceStreamFromServerServer{stream})
-}
-
-type MutualService_StreamFromServerServer interface {
-	Send(*Message) error
-	grpc.ServerStream
-}
-
-type mutualServiceStreamFromServerServer struct {
-	grpc.ServerStream
-}
-
-func (x *mutualServiceStreamFromServerServer) Send(m *Message) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 func _MutualService_StreamFromClient_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(MutualServiceServer).StreamFromClient(&mutualServiceStreamFromClientServer{stream})
 }
@@ -366,32 +204,6 @@ func (x *mutualServiceStreamFromClientServer) SendAndClose(m *Message) error {
 }
 
 func (x *mutualServiceStreamFromClientServer) Recv() (*Message, error) {
-	m := new(Message)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func _MutualService_StreamFromClientToServer_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(MutualServiceServer).StreamFromClientToServer(&mutualServiceStreamFromClientToServerServer{stream})
-}
-
-type MutualService_StreamFromClientToServerServer interface {
-	Send(*Message) error
-	Recv() (*Message, error)
-	grpc.ServerStream
-}
-
-type mutualServiceStreamFromClientToServerServer struct {
-	grpc.ServerStream
-}
-
-func (x *mutualServiceStreamFromClientToServerServer) Send(m *Message) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *mutualServiceStreamFromClientToServerServer) Recv() (*Message, error) {
 	m := new(Message)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -450,33 +262,14 @@ var MutualService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MutualService_Join_Handler,
 		},
 		{
-			MethodName: "Leave",
-			Handler:    _MutualService_Leave_Handler,
-		},
-		{
-			MethodName: "Send",
-			Handler:    _MutualService_Send_Handler,
-		},
-		{
 			MethodName: "GetToken",
 			Handler:    _MutualService_GetToken_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "StreamFromServer",
-			Handler:       _MutualService_StreamFromServer_Handler,
-			ServerStreams: true,
-		},
-		{
 			StreamName:    "StreamFromClient",
 			Handler:       _MutualService_StreamFromClient_Handler,
-			ClientStreams: true,
-		},
-		{
-			StreamName:    "StreamFromClientToServer",
-			Handler:       _MutualService_StreamFromClientToServer_Handler,
-			ServerStreams: true,
 			ClientStreams: true,
 		},
 		{

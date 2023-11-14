@@ -6,11 +6,7 @@ package main;
 
 service MutualService {
     rpc Join(JoinRequest) returns (JoinResponse);
-	rpc Leave(LeaveRequest) returns (LeaveResponse);
-	rpc Send (Message) returns (PublishResponse);
-	rpc StreamFromServer (Message) returns (stream Message);
 	rpc StreamFromClient (stream Message) returns (Message);
-	rpc StreamFromClientToServer (stream Message) returns (stream Message);
 	rpc Broadcast (BroadcastSubscription) returns (stream Message);
 	rpc GetToken (Token) returns (Token);
 
@@ -21,14 +17,6 @@ message JoinRequest {
 }
 
 message JoinResponse {
-	string nodeId = 1;
-}
-
-message LeaveRequest {
-	string senderId = 1;
-}
-
-message LeaveResponse {
 	string nodeId = 1;
 }
 
