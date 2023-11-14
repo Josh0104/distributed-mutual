@@ -28,26 +28,6 @@ func StreamFromClient(client MutualServiceClient, message string) {
 
 }
 
-
-// func (s *MutualService) StreamFromServer(req *Message, stream MutualService_StreamFromServerServer) error {
-// 	for {
-// 		// get the next message from the stream
-// 		err := stream.Send(req)
- 
-// 		// the stream is closed so we can exit the loop
-// 		if err == io.EOF {
-// 			break
-// 		}
-// 		// some other error
-// 		if err != nil {
-// 			return err
-// 		}
-// 		// log the message
-// 		// log.Printf("Received message from %s: %s", msg.SenderId, msg.Content)
-// 	}
-// 	return nil
-// }
-
 func (s *MutualService) StreamFromClient(msgStream MutualService_StreamFromClientServer) error {
 	for {
 		// get the next message from the stream
