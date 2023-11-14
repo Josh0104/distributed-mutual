@@ -34,8 +34,6 @@ var (
 	addr               string
 	wgServer           sync.WaitGroup
 	wgClients          sync.WaitGroup
-	globalCancel       context.CancelFunc  // Declare at a higher scope
-	mutual_client      MutualServiceClient //the server
 	mutual_server      *MutualService //the client
 	otherClientsServerMutex sync.Mutex
 	serverRegistrar   *grpc.Server
@@ -154,8 +152,6 @@ func promptForInput() {
 						log.Fatalf("could not get input: %v", err)
 					}
 
-					// sendMessageToClients(otherClientsServer[0], input)
-					// sendMessageToClients(otherClientsServer[1], input)
 					send(otherClientsServer[0], input)
 					send(otherClientsServer[1], input)
 					// Example usage to check isInCriticalSection for the first client
@@ -182,9 +178,9 @@ func enterWaitingState() {
             // handle error
         }
 
-        if !token1.IsCritical && !token2.IsCritical {
+        if !token1.IsCritical || !token2.IsCritical {
             active = false
-			mutual_server.setStatus(true, true)
+			setToken(mutual_server,true, true)
             // Initialize the Token with IsWaiting and IsCritical set to true
 			// setToken(, true, true)
 			log.Print("__________________")
@@ -200,7 +196,7 @@ func enterWaitingState() {
 		}else {
 			waitIndex = waitIndex + 1
 			log.Printf("Client %s is waiting", addr)
-            time.Sleep(7 * time.Second)
+            time.Sleep(1 * time.Second)
         }
     }
 }
@@ -214,15 +210,15 @@ func enterCriticalSection(name string) {
 	getTokenInfo(otherClientsServer[0])
 	getTokenInfo(otherClientsServer[1])
 
-	time.Sleep(20 * time.Second) // simulate work
+	time.Sleep(10 * time.Second) // simulate work
 }
 
 func leaveCriticalSection(name string) {
+	setToken(mutual_server,false, false)
 	msg := "Client " + name + " leaving critical section"
-	log.Printf("Client %s leaving critical section", name)
+	log.Printf(msg)
 	StreamFromClient(otherClientsServer[0], msg)
 	StreamFromClient(otherClientsServer[1], msg)
-	mutual_server.setStatus(false, false)
 }
 
 func connectToOtherClients() {
@@ -248,11 +244,11 @@ func connectToOtherClients() {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			// StreamFromClient(clients_server, port)
+			StreamFromClient(clients_server, port)
 
 			otherClientsServer = append(otherClientsServer, clients_server)
-			sayHiToClient(clients_server, port)
-
+			send(clients_server, "Hello I am now connected to you :) "+addr)
+			log.Printf("The length of otherClientServer: %v",len(otherClientsServer))
 			res, err := clients_server.Join(ctx, &JoinRequest{
 				NodeName: addr,
 			})
@@ -308,28 +304,6 @@ func (s *MutualService) Join(ctx context.Context, req *JoinRequest) (*JoinRespon
 	}, nil
 }
 
-func sayHiToClient(server MutualServiceClient, port string) {
-	// get a stream to the server
-	stream, err := server.StreamFromClient(context.Background())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	// send some messages to the server
-	stream.Send(&Message{Content: "I am now connected to you", SenderId: port})
-}
-
-func sendMessageToClients(server MutualServiceClient, input string) {
-	stream, err := server.StreamFromServer(context.Background(), &Message{Content: "Hello from client", SenderId: "client" + addr})
-
-	stream.SendMsg(&Message{Content: input, SenderId: "client" + addr})
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-}
 
 // Server receives message from client
 func send(client MutualServiceClient, input string) {
@@ -349,17 +323,9 @@ func getTokenInfo(client MutualServiceClient) {
 	tokenName := res.GetTokenName()
 	criticalStatus := res.GetIsCritical()
 
-	log.Printf("Server Info: Name: %s, criticalStatus: %v", tokenName, criticalStatus)
+	log.Printf("Client Info: Name: %s, criticalStatus: %v", tokenName, criticalStatus)
 }
 
-func (s *MutualService) GetToken(ctx context.Context, req *Token) (*Token, error) {
-	// Return information about the server
-	return &Token{
-		TokenName:  addr,
-		IsWaiting:  false,
-		IsCritical: false,
-	}, nil
-}
 
 func setToken(s *MutualService, isWaiting bool, isCritical bool) {
 	
@@ -369,20 +335,6 @@ func setToken(s *MutualService, isWaiting bool, isCritical bool) {
 		IsCritical: isCritical,
 	})
 }
-
-func setTokenNewValue(isWaiting bool, isCritical bool) {
-	serverRegistrar := grpc.NewServer()
-	mutual_server := &MutualService{
-		name:                "client" + addr,
-		port:                addr,
-		isInCriticalSection: isCritical,
-		isWaiting:           isWaiting,
-	}
-
-	RegisterMutualServiceServer(serverRegistrar, mutual_server)
-
-}
-
 // SetIsInCriticalSection updates the isInCriticalSection field
 func (m *MutualService) SetIsInCriticalSection(value bool) {
     m.isInCriticalSection = value
@@ -397,3 +349,13 @@ func (s *MutualService) setStatus(isInCriticalSection bool, isWaiting bool) {
 	s.isInCriticalSection = isInCriticalSection
 	s.isWaiting = isWaiting
 }
+
+func (s *MutualService) GetToken(ctx context.Context, req *Token) (*Token, error) {
+	// Return information about the server
+	return &Token{
+		TokenName:  addr,
+		IsWaiting:  false,
+		IsCritical: false,
+	}, nil
+}
+
