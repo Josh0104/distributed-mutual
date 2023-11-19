@@ -26,7 +26,7 @@ Now that the simulation is set up, you have two options:
 
 ## Note
 
-This simulation is based on the Token Ring algorithm. However, be aware that, at the moment, each client can enter the critical section simultaneously, and there is no token giver in the code.
+This simulation is based on the Token Ring algorithm. Only one client can enter the critical seciton, however, be aware that, at the moment, there is no inddicator who is the next in line in the ring, so it is just which client notice first that the critical section is empty, will enter the critical section
 
 For a detailed explanation of how we want the implementation, please refer to the report PDF file provided in the hand-in submission.
 
