@@ -9,10 +9,13 @@ This repository contains a simulation of distributed mutual exclusion using the 
 
     ```bash
     go run . -client 1
+    ```
+    ```bash
     go run . -client 2
+    ```
+    ```bash
     go run . -client 3
     ```
-
    Make sure to execute all three commands in each terminal before proceeding.
 
 3. Select "Connect to other clients" in each terminal after running the commands.
